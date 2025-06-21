@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | ElectroTech - Advanced Electronics Solutions</title>
+    <meta name="description" content="Login to your ElectroTech account to access premium electronics components and services.">
+    
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
+    
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&family=Orbitron:wght@500;700&display=swap" rel="stylesheet">
+    
+    <!-- Font Awesome with integrity check -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha512-iecdLmaskl7CVkqkXNQ/ZH/XLlvWZOJyj7Yy7tcenmpD1ypASozpmT/E0iPtmFIB46ZmdtAc9eNBvH0H/ZpiBw==" crossorigin="anonymous" referrerpolicy="no-referrer">
+    
+    <style>
+        :root {
+            --primary: #1a73e8;
+            --primary-light: #4285f4;
+            --primary-dark: #0d47a1;
+            --secondary: #e8f0fe;
+            --accent: #34a853;
+            --text-dark: #202124;
+            --text-light: #f8f9fa;
+            --white: #ffffff;
+            --gray: #5f6368;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s ease;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            display: flex;
+            min-height: 100vh;
+            font-family: 'Roboto', sans-serif;
+            color: var(--text-dark);
+            background-color: var(--white);
+        }
+        
+        /* Left Panel - Login Form */
+        .left-panel {
+            width: 50%;
+            padding: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--white);
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Right Panel - Hero Image */
+        .right-panel {
+            width: 50%;
+            background: linear-gradient(rgba(26, 115, 232, 0.85), rgba(26, 115, 232, 0.9)), 
+                      url('https://images.unsplash.com/photo-1555774698-0b77e0d5fac6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80') no-repeat center center/cover;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-light);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        /* Logo & Branding */
+        .logo {
+            font-size: 2.8rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            font-family: 'Orbitron', sans-serif;
+            color: var(--primary);
+            letter-spacing: 1px;
+            text-decoration: none;
+        }
+        
+        .tagline {
+            font-size: 1.1rem;
+            margin-bottom: 3rem;
+            color: var(--gray);
+            font-weight: 300;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Buttons */
+        .signup-btn {
+            padding: 15px 50px;
+            border: 2px solid var(--primary);
+            border-radius: 30px;
+            background-color: transparent;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-bottom: 3rem;
+            transition: var(--transition);
+            color: var(--primary);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        
+        .signup-btn:hover,
+        .signup-btn:focus {
+            background-color: var(--primary);
+            color: var(--white);
+            box-shadow: var(--shadow);
+            outline: none;
+        }
+        
+        /* Form Elements */
+        .adventure-text {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            font-family: 'Orbitron', sans-serif;
+            color: var(--primary);
+            position: relative;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+        
+        .adventure-text::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50px;
+            height: 2px;
+            background-color: var(--accent);
+        }
+        
+        .form-container {
+            width: 100%;
+            max-width: 350px;
+        }
+        
+        .input-group {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+        
+        .input-field {
+            width: 100%;
+            padding: 15px 15px 15px 45px;
+            border: 1px solid #ddd;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            transition: var(--transition);
+            background-color: var(--secondary);
+        }
+        
+        .input-field:focus {
+            outline: none;
+            border-color: var(--primary-light);
+            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+        }
+        
+        .input-icon {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--primary-light);
+        }
+        
+        .login-btn {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--primary);
+            color: var(--white);
+            border: none;
+            border-radius: 30px;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-bottom: 1.5rem;
+            transition: var(--transition);
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .login-btn:hover,
+        .login-btn:focus {
+            background-color: var(--primary-dark);
+            box-shadow: var(--shadow);
+            outline: none;
+        }
+        
+        /* Divider */
+        .divider {
+            display: flex;
+            align-items: center;
+            margin: 1.5rem 0;
+            color: var(--gray);
+        }
+        
+        .divider::before, 
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .divider-text {
+            padding: 0 10px;
+            font-size: 0.9rem;
+        }
+        
+        /* Social Login */
+        .social-login {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        
+        .social-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: var(--transition);
+            color: var(--white);
+            font-size: 1.2rem;
+        }
+
+        .social-icon:hover,
+        .social-icon:focus {
+            transform: translateY(-3px);
+        }
+        
+        .facebook {
+            background-color: #3b5998;
+        }
+        
+        .google {
+            background-color: #db4437;
+        }
+        
+        .linkedin {
+            background-color: #0077b5;
+        }
+        
+        /* Admin Link */
+        .admin-link {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            color: var(--white);
+            text-decoration: none;
+            padding: 10px 25px;
+            border: 1px solid var(--white);
+            border-radius: 30px;
+            background-color: transparent;
+            transition: var(--transition);
+            font-size: 0.9rem;
+        }
+        
+        .admin-link:hover,
+        .admin-link:focus {
+            background-color: rgba(255, 255, 255, 0.1);
+            transform: translateY(-2px);
+            outline: none;
+        }
+        
+        /* Right Panel Content */
+        .adopt-text {
+            font-size: 3rem;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            line-height: 1.2;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .right-panel p {
+            max-width: 500px;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+            font-weight: 300;
+            text-align: center;
+            padding: 0 20px;
+        }
+        
+        .tech-features {
+            display: flex;
+            gap: 30px;
+            margin-top: 30px;
+        }
+        
+        .feature {
+            text-align: center;
+        }
+        
+        .feature i {
+            font-size: 1.8rem;
+            margin-bottom: 10px;
+            color: var(--accent);
+        }
+        
+        .feature span {
+            font-size: 0.9rem;
+            display: block;
+        }
+        
+        /* Responsive Design */
+        @media (max-width: 992px) {
+            body {
+                flex-direction: column;
+                min-height: 100vh;
+            }
+            
+            .left-panel, 
+            .right-panel {
+                width: 100%;
+                padding: 40px 20px;
+            }
+            
+            .right-panel {
+                order: -1;
+                min-height: 50vh;
+            }
+            
+            .adopt-text {
+                font-size: 2.2rem;
+                margin-top: 0;
+            }
+            
+            .admin-link {
+                position: static;
+                display: inline-block;
+                margin-top: 20px;
+            }
+            
+            .tech-features {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+        }
+        
+        /* Accessibility Improvements */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+        
+        /* Animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .animated {
+            animation: fadeIn 0.8s ease-out forwards;
+        }
+        
+        .delay-1 { animation-delay: 0.2s; }
+        .delay-2 { animation-delay: 0.4s; }
+        .delay-3 { animation-delay: 0.6s; }
+        .delay-4 { animation-delay: 0.8s; }
+    </style>
+</head>
+<body>
+    <!-- Left Panel - Login Form -->
+    <div class="left-panel">
+        <a href="/" class="logo animated">ElectroTech</a>
+        <p class="tagline animated delay-1">Innovating the future of electronics</p>
+        
+        <button class="signup-btn animated delay-2" onclick="window.location.href='signup'">
+            Create Account
+        </button>
+        
+        <h2 class="adventure-text animated delay-3">Access Your Dashboard</h2>
+        
+        <div class="form-container">
+            <!-- Login Form -->
+            <form method="POST" action="{{ url_for('login') }}" id="loginForm">
+
+                <div class="input-group animated delay-3">
+                    <i class="fas fa-user input-icon" aria-hidden="true"></i>
+                    <input type="text" class="input-field" name="username" placeholder="Username" required
+                           aria-label="Username">
+                </div>
+        
+                <div class="input-group animated delay-3">
+                    <i class="fas fa-envelope input-icon" aria-hidden="true"></i>
+                    <input type="email" class="input-field" name="email" placeholder="E-mail" required
+                           aria-label="Email address">
+                </div>
+        
+                <div class="input-group animated delay-3">
+                    <i class="fas fa-lock input-icon" aria-hidden="true"></i>
+                    <input type="password" class="input-field" name="password" placeholder="Password" required
+                           aria-label="Password">
+                </div>
+        
+                <button type="submit" class="login-btn animated delay-4">Login</button>
+            </form>
+        
+            <div class="divider animated delay-4">
+                <span class="divider-text">or continue with</span>
+            </div>
+        
+            <div class="social-login animated delay-4">
+                <a href="#" class="social-icon facebook" aria-label="Login with Facebook">
+                    <i class="fab fa-facebook-f" aria-hidden="true"></i>
+                </a>
+                <a href="#" class="social-icon google" aria-label="Login with Google">
+                    <i class="fab fa-google" aria-hidden="true"></i>
+                </a>
+                <a href="#" class="social-icon linkedin" aria-label="Login with LinkedIn">
+                    <i class="fab fa-linkedin-in" aria-hidden="true"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Panel - Hero Content -->
+    <div class="right-panel">
+        <h2 class="adopt-text animated delay-1">Advanced Electronic Solutions</h2>
+        <p class="animated delay-2">
+            Access our premium inventory of electronic components, tools, and services. Get expert support for all your tech projects.
+        </p>
+        
+        <div class="tech-features animated delay-3">
+            <div class="feature">
+                <i class="fas fa-microchip"></i>
+                <span>Quality Components</span>
+            </div>
+            <div class="feature">
+                <i class="fas fa-tools"></i>
+                <span>Expert Support</span>
+            </div>
+            <div class="feature">
+                <i class="fas fa-shield-alt"></i>
+                <span>Secure Platform</span>
+            </div>
+        </div>
+        
+        <a href="admin.html" class="admin-link animated delay-4">Admin Portal</a>
+    </div>
+
+    <script>
+        // Form validation
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            const email = this.elements['email'].value;
+            const password = this.elements['password'].value;
+            
+            // Basic validation
+            if (!email.includes('@') || password.length < 6) {
+                e.preventDefault();
+                alert('Please enter a valid email and password (minimum 6 characters)');
+            }
+        });
+
+        // Social login handlers
+        document.querySelectorAll('.social-icon').forEach(icon => {
+            icon.addEventListener('click', function(e) {
+                const platform = this.classList.contains('facebook') ? 'Facebook' : 
+                                this.classList.contains('google') ? 'Google' : 'LinkedIn';
+                alert(`Redirecting to ${platform} login`);
+            });
+        });
+
+        // Dark mode toggle 
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+        }
+    </script>
+</body>
+</html>

@@ -4,8 +4,35 @@
   <meta charset="UTF-8">
   <title>Electronics Products</title>
   <style>
-    body { font-family: Arial, sans-serif; padding: 2rem; background: #f7f7f7; }
-    h1 { text-align: center; }
+    body {
+      font-family: Arial, sans-serif;
+      padding: 2rem;
+      background: #f7f7f7;
+    }
+    h1 {
+      text-align: center;
+    }
+    .top-bar {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 1rem;
+    }
+    .logout-button {
+      background: #ff4d4d;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      font-size: 14px;
+    }
+    .logout-button img {
+      width: 18px;
+      height: 18px;
+      margin-right: 6px;
+    }
     .product {
       border: 1px solid #ccc;
       background: white;
@@ -27,6 +54,17 @@
   </style>
 </head>
 <body>
+
+  <!-- Sign Out Button -->
+  <div class="top-bar">
+    <form method="post" action="/logout">
+      <button type="submit" class="logout-button">
+        <img src="https://cdn-icons-png.flaticon.com/512/1828/1828479.png" alt="Logout Icon">
+        Sign Out
+      </button>
+    </form>
+  </div>
+
   <h1>Our Products</h1>
 
   <div class="search">
@@ -45,5 +83,6 @@
   {% else %}
     <p>No products found.</p>
   {% endfor %}
+
 </body>
 </html>
