@@ -1,5 +1,5 @@
 // Set Cesium access token
-Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4NmJhZDE2Zi0xMWFmLTQ0OWItODQ3Ni04OWJjZTYxZWIzYjMiLCJpZCI6MzE2Nzk4LCJpYXQiOjE3NTEyMjgwOTd9.D5yWLN8d_1CAZtqCV9tof6V68ExhVIZG-uFpycXPTtU';
+Cesium.Ion.defaultAccessToken = 'add your token';
 
 // Camera control variables
 let currentCameraMode = 'thirdPerson'; // 'firstPerson' or 'thirdPerson'
