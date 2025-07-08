@@ -55,6 +55,11 @@ document.getElementById("ask-btn").addEventListener("click", () => {
       aiMessage.innerHTML = `<div class="message-content"><p>${data.answer || "Sorry, I couldn't find an answer to that."}</p></div>`;
       chatMessages.appendChild(aiMessage);
       chatMessages.scrollTop = chatMessages.scrollHeight;
+
+      // Try to control drone if AI returned a command
+      if (data.command) {
+        handleAICommand(data.command);
+      }
     })
     .catch(() => {
       chatMessages.removeChild(loadingDiv);
@@ -85,7 +90,6 @@ clearBtn.style.visibility = 'hidden'; // hide clear button initially
 searchInput.addEventListener('input', () => {
   if (searchInput.value.trim().length > 0) {
     clearBtn.style.visibility = 'visible';
-    // Optionally you could fetch suggestions here while typing
     showSuggestions(searchInput.value.trim());
   } else {
     clearBtn.style.visibility = 'hidden';
@@ -128,12 +132,10 @@ function performSearch() {
       `).join('');
       suggestionsContainer.style.display = 'block';
 
-      // Add click event to suggestions
       document.querySelectorAll('.suggestion-item').forEach(item => {
         item.addEventListener('click', () => {
           searchInput.value = item.querySelector('strong').textContent;
           suggestionsContainer.style.display = 'none';
-          // Optionally trigger product load here if needed
         });
       });
     })
@@ -170,7 +172,6 @@ function showSuggestions(query) {
         item.addEventListener('click', () => {
           searchInput.value = item.querySelector('strong').textContent;
           suggestionsContainer.style.display = 'none';
-          // Optionally trigger product load here if needed
         });
       });
     })
@@ -180,9 +181,48 @@ function showSuggestions(query) {
     });
 }
 
-// Hide suggestions if clicked outside
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.search-container')) {
     suggestionsContainer.style.display = 'none';
   }
 });
+
+const addModelBtn = document.getElementById('addModelBtn');
+addModelBtn.addEventListener('click', () => {
+  window.location.href = 'upload.html';
+});
+
+
+// 🔥 DRONE CONTROL FROM AI REPLY 🔥
+function handleAICommand(command) {
+  if (!window.viewer || !window.droneEntity) return;
+
+  const parts = command.toUpperCase().split(" ");
+  if (parts.length < 3) return;
+
+  const action = parts[0];
+  const direction = parts[1];
+  const value = parseFloat(parts[2]);
+
+  let move = { x: 0, y: 0, z: 0 };
+
+  if (action === "MOVE") {
+    switch (direction) {
+      case "FORWARD": move.x = value; break;
+      case "BACKWARD": move.x = -value; break;
+      case "LEFT": move.y = -value; break;
+      case "RIGHT": move.y = value; break;
+      case "UP": move.z = value; break;
+      case "DOWN": move.z = -value; break;
+    }
+  }
+
+  const current = droneEntity.position.getValue(Cesium.JulianDate.now());
+  const newPosition = Cesium.Cartesian3.add(
+    current,
+    new Cesium.Cartesian3(move.x, move.y, move.z),
+    new Cesium.Cartesian3()
+  );
+
+  droneEntity.position = new Cesium.ConstantPositionProperty(newPosition);
+}

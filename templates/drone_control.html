@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>3D World Map & Drone Control System</title>
+  <link rel="stylesheet" href="drone_control.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.130.1/Build/Cesium/Cesium.js"></script>
+  <link href="https://cesium.com/downloads/cesiumjs/releases/1.130.1/Build/Cesium/Widgets/widgets.css" rel="stylesheet">    
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="logo-container">
+        <i class="fas fa-globe-americas logo-icon"></i>
+        <h1>3D World Map <span>&</span> Drone Control</h1>
+      </div>
+      <p class="tagline">Advanced 3D Mapping with Real-time Drone Control System</p>
+    </header>
+    
+    <div class="main-grid">
+      <!-- 3D World Map Card -->
+      <div class="card map-card">
+        <h3><i class="fas fa-globe"></i> 3D World Map</h3>
+        <div id="cesiumContainer" tabindex="0">
+          <div id="actionButtonContainer">  
+            <button id="actionButton" class="location-btn">
+              <i class="fas fa-map-marker-alt"></i> Go to Location
+            </button>
+          </div>
+          
+          <div class="physics-controls">
+            <h4>DRONE PHYSICS CONTROLS</h4>
+            <div class="control-group">
+              <label>Thrust Power</label>
+              <input type="range" id="thrustPower" min="0" max="100" value="50">
+              <div class="value-display" id="thrustValue">50%</div>
+            </div>
+            
+            <div class="control-group">
+              <label>Rotor Speed (RPM)</label>
+              <input type="range" id="rotorSpeed" min="0" max="3000" value="1500">
+              <div class="value-display" id="rotorValue">1500 RPM</div>
+            </div>
+            
+            <div class="control-group">
+              <label>Wind Resistance</label>
+              <input type="range" id="windResistance" min="0" max="100" value="20">
+              <div class="value-display" id="windValue">20%</div>
+            </div>
+            
+            <div class="control-group">
+              <label>Gravity Factor</label>
+              <input type="range" id="gravityFactor" min="0" max="200" value="100">
+              <div class="value-display" id="gravityValue">100%</div>
+            </div>
+            
+            <div class="control-group">
+              <label>Overall Speed</label>
+              <input type="range" id="speedControl" min="0" max="100" value="50">
+              <div class="value-display" id="speedValue">50%</div>
+            </div>
+          </div>
+
+          <!-- Status Display -->
+          <div class="status-display">
+            <div class="status-item">
+              <span>Altitude:</span>
+              <span class="status-value" id="altitudeDisplay">0 m</span>
+            </div>
+            <div class="status-item">
+              <span>Speed:</span>
+              <span class="status-value" id="speedDisplay">0 m/s</span>
+            </div>
+            <div class="status-item">
+              <span>Battery:</span>
+              <span class="status-value" id="batteryDisplay">100%</span>
+            </div>
+            <div class="status-item">
+              <span>Motor:</span>
+              <span class="status-value" id="motorStatus">OFF</span>
+            </div>
+            <div class="status-item">
+              <span>Temperature:</span>
+              <span class="status-value" id="temperatureDisplay">0 °C</span>
+            </div>
+            <div class="status-item">
+              <span>Humidity:</span>
+              <span class="status-value" id="humidityDisplay">0 %</span>
+            </div>
+            <div class="status-item">
+              <span>Pressure:</span>
+              <span class="status-value" id="pressureDisplay">0 hPa</span>
+            </div>
+            <div class="status-item">
+              <span>Orientation:</span>
+              <span class="status-value" id="orientationDisplay">H:0 P:0 R:0</span>
+            </div>
+          </div>
+
+          <!-- Motor Control Button -->
+          <div id="motorControlContainer">
+            <button id="motorButton" class="motor-btn">
+              <i class="fas fa-power-off"></i>
+              <span id="motorButtonText">START MOTOR</span>
+            </button>
+          </div>
+          
+          <!-- Camera Control Button -->
+          <div id="cameraControlContainer">
+            <button id="cameraButton" class="camera-btn">
+              <i class="fas fa-camera"></i>
+              <span id="cameraButtonText">FIRST-PERSON VIEW</span>
+            </button>
+          </div>
+
+          <!-- Enhanced Red Dot Indicator -->
+          <div class="drone-view-indicator" id="droneViewIndicator"></div>
+        </div>
+      </div>
+
+      <!-- Drone Control System Card -->
+      <div class="card control-card">
+        <h3><i class="fas fa-gamepad"></i> Drone Control System</h3>
+        <div class="command-area">
+          <div id="command-messages">
+            <div class="system-message">
+              <strong>🚁 Drone Control System Active</strong><br>
+              Use the controls below to pilot your drone. Motor must be started before flight operations.
+            </div>
+          </div>
+          
+          <div class="model-control-buttons">
+            <button class="control-btn" data-action="forward">
+              <i class="fas fa-arrow-up"></i> Forward
+            </button>
+            <button class="control-btn" data-action="backward">
+              <i class="fas fa-arrow-down"></i> Backward
+            </button>
+            <button class="control-btn" data-action="left">
+              <i class="fas fa-arrow-left"></i> Left
+            </button>
+            <button class="control-btn" data-action="right">
+              <i class="fas fa-arrow-right"></i> Right
+            </button>
+            <button class="control-btn" data-action="up">
+              <i class="fas fa-arrow-alt-circle-up"></i> Ascend
+            </button>
+            <button class="control-btn" data-action="down">
+              <i class="fas fa-arrow-alt-circle-down"></i> Descend
+            </button>
+            <button class="control-btn" data-action="hover">
+              <i class="fas fa-pause"></i> Hover
+            </button>
+            <button class="control-btn" data-action="emergency">
+              <i class="fas fa-exclamation-triangle"></i> Emergency
+            </button>
+            <button class="control-btn" data-action="home">
+              <i class="fas fa-home"></i> Return Home
+            </button>
+          </div>
+          
+          <div class="command-input-area">
+            <input type="text" id="command-input" placeholder="Enter command (e.g., move forward, go up)">
+            <button id="send-command-btn" class="send-command-btn">
+              <i class="fas fa-paper-plane"></i> Send
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add New Robot Card -->
+      <div class="card robot-card">
+        <h3><i class="fas fa-robot"></i> Add New Robot</h3>
+        <form id="addRobotForm">
+          <div class="form-group">
+            <label for="robotName">Name:</label>
+            <input type="text" id="robotName" name="robotName" required>
+          </div>
+
+          <div class="form-group">
+            <label for="cesiumAssetId">Cesium Asset ID:</label>
+            <input type="number" id="cesiumAssetId" name="cesiumAssetId" placeholder="Enter Cesium Ion Asset ID" required>
+          </div>
+
+          <div class="form-group">
+            <label for="robotPosition">Initial Position:</label>
+            <div class="position-inputs">
+              <input type="number" id="robotLon" name="robotLon" placeholder="Longitude" step="0.0001" required>
+              <input type="number" id="robotLat" name="robotLat" placeholder="Latitude" step="0.0001" required>
+              <input type="number" id="robotHeight" name="robotHeight" placeholder="Height" step="0.1" value="0" required>
+            </div>
+          </div>
+
+          <button type="submit" class="submit-btn">Add Robot</button>
+        </form>
+      </div>
+    </div>
+
+    <footer>
+      <p>© 2025 3D World Map & Drone Control System. All rights reserved.</p>
+      <div class="footer-links">
+        <a href="#">Documentation</a>
+        <a href="#">Support</a>
+        <a href="#">Contact</a>
+      </div>
+    </footer>
+  </div>
+  
+  <script src="drone_script.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,699 @@
+  <script>
+    // Set Cesium access token
+    Cesium.Ion.defaultAccessToken = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiI4NmJhZDE2Zi0xMWFmLTQ0OWItODQ3Ni04OWJjZTYxZWIzYjMiLCJpZCI6MzE2Nzk4LCJpYXQiOjE3NTEyMjgwOTd9.D5yWLN8d_1CAZtqCV9tof6V68ExhVIZG-uFpycXPTtU';
+
+    // Initialize Cesium viewer
+    const viewer = new Cesium.Viewer('cesiumContainer', {
+        terrain: Cesium.Terrain.fromWorldTerrain(),
+        shouldAnimate: true,
+        navigationHelpButton: false,
+        timeline: false,
+        animation: false,
+        geocoder: false,
+        homeButton: false,
+        infoBox: false,
+        selectionIndicator: false,
+        baseLayerPicker: false,
+        fullscreenButton: false,
+        vrButton: false,
+        sceneModePicker: false,
+    });
+
+    // Starting position (San Francisco)
+    const initialLongitude = -122.4175;
+    const initialLatitude = 37.77;
+    const initialHeight = 300;
+    
+    // Global drone control variables
+    window.droneControls = {
+        moveStep: 0.0005,
+        heightStep: 10,
+        currentHeight: initialHeight,
+        isMoving: false,
+        originalLongitude: initialLongitude,
+        originalLatitude: initialLatitude,
+        positionHistory: [],
+        maxHistory: 10
+    };
+
+    window.targetLongitude = initialLongitude;
+    window.targetLatitude = initialLatitude;
+    window.currentLongitude = initialLongitude;
+    window.currentLatitude = initialLatitude;
+    window.currentHeight = window.droneControls.currentHeight;
+
+    let droneEntity;
+
+    // Enhanced Drone Physics Engine
+    class DronePhysicsEngine {
+        constructor() {
+            this.position = new Cesium.Cartesian3(0, 0, 1000);
+            this.velocity = new Cesium.Cartesian3(0, 0, 0);
+            this.acceleration = new Cesium.Cartesian3(0, 0, 0);
+            this.rotation = new Cesium.HeadingPitchRoll(0, 0, 0);
+            this.angularVelocity = new Cesium.HeadingPitchRoll(0, 0, 0);
+            
+            this.mass = 2.5;
+            this.dragCoefficient = 0.1;
+            this.thrustPower = 0.5;
+            this.rotorSpeed = 1500;
+            this.windResistance = 0.2;
+            this.gravityFactor = 1.0;
+            this.motorRunning = false;
+            this.battery = 100;
+            this.altitude = 1000;
+            this.speed = 0;
+            this.maxSpeed = 20; // m/s
+            this.maxAltitude = 500; // meters
+        }
+        
+        startMotor() {
+            this.motorRunning = true;
+            document.getElementById('motorStatus').textContent = 'ON';
+            document.getElementById('motorButtonText').textContent = 'STOP MOTOR';
+            addCommandMessage('Motor started. Drone ready for flight operations.', 'system');
+        }
+        
+        stopMotor() {
+            this.motorRunning = false;
+            document.getElementById('motorStatus').textContent = 'OFF';
+            document.getElementById('motorButtonText').textContent = 'START MOTOR';
+            addCommandMessage('Motor stopped. Drone entering emergency descent.', 'system');
+        }
+        
+        updatePhysics() {
+            if (this.motorRunning && this.battery > 0) {
+                // Battery drain
+                this.battery = Math.max(0, this.battery - 0.05);
+                
+                // Calculate thrust based on rotor speed and thrust power
+                const thrust = (this.rotorSpeed / 3000) * this.thrustPower * 9.8 * this.gravityFactor;
+                
+                // Apply forces
+                this.acceleration.z = thrust - (9.8 * this.gravityFactor);
+                
+                // Apply wind resistance
+                const speed = Cesium.Cartesian3.magnitude(this.velocity);
+                const dragMagnitude = 0.5 * this.dragCoefficient * speed * speed * this.windResistance;
+                const dragDirection = Cesium.Cartesian3.negate(
+                    Cesium.Cartesian3.normalize(this.velocity, new Cesium.Cartesian3()), 
+                    new Cesium.Cartesian3()
+                );
+                const dragForce = Cesium.Cartesian3.multiplyByScalar(dragDirection, dragMagnitude, new Cesium.Cartesian3());
+                
+                this.acceleration = Cesium.Cartesian3.add(
+                    this.acceleration,
+                    Cesium.Cartesian3.multiplyByScalar(dragForce, 1/this.mass, new Cesium.Cartesian3()),
+                    this.acceleration
+                );
+            } else {
+                // Gravity when motor is off
+                this.acceleration.z = -9.8 * this.gravityFactor;
+            }
+            
+            // Update velocity and position
+            this.velocity = Cesium.Cartesian3.add(
+                this.velocity, 
+                Cesium.Cartesian3.multiplyByScalar(this.acceleration, 0.1, new Cesium.Cartesian3()), 
+                new Cesium.Cartesian3()
+            );
+            
+            // Limit speed
+            const currentSpeed = Cesium.Cartesian3.magnitude(this.velocity);
+            if (currentSpeed > this.maxSpeed) {
+                this.velocity = Cesium.Cartesian3.multiplyByScalar(
+                    Cesium.Cartesian3.normalize(this.velocity, new Cesium.Cartesian3()),
+                    this.maxSpeed,
+                    new Cesium.Cartesian3()
+                );
+            }
+            
+            this.position = Cesium.Cartesian3.add(this.position, this.velocity, new Cesium.Cartesian3());
+            
+            // Ground collision
+            if (this.position.z < 0) {
+                this.position.z = 0;
+                this.velocity.z = 0;
+            }
+            
+            // Update status variables
+            this.altitude = this.position.z;
+            this.speed = Cesium.Cartesian3.magnitude(this.velocity);
+            
+            // Update UI displays
+            document.getElementById('altitudeDisplay').textContent = `${this.altitude.toFixed(1)} m`;
+            document.getElementById('speedDisplay').textContent = `${this.speed.toFixed(1)} m/s`;
+            document.getElementById('batteryDisplay').textContent = `${Math.round(this.battery)}%`;
+        }
+        
+        emergency() {
+            this.motorRunning = false;
+            this.velocity = new Cesium.Cartesian3(0, 0, -1);
+            addCommandMessage('EMERGENCY STOP ACTIVATED!', 'error');
+        }
+        
+        hover() {
+            if (this.motorRunning) {
+                this.velocity = new Cesium.Cartesian3(0, 0, 0);
+                this.acceleration = new Cesium.Cartesian3(0, 0, 0);
+            }
+        }
+        
+        returnHome() {
+            window.targetLongitude = window.droneControls.originalLongitude;
+            window.targetLatitude = window.droneControls.originalLatitude;
+            window.currentHeight = window.droneControls.currentHeight;
+            addCommandMessage('Returning to home position...', 'system');
+        }
+    }
+
+    // Initialize physics engine
+    const dronePhysics = new DronePhysicsEngine();
+
+    // Position validation
+    window.updateTargetPosition = function() {
+        if (window.targetLatitude > 90) window.targetLatitude = 90;
+        if (window.targetLatitude < -90) window.targetLatitude = -90;
+        if (window.targetLongitude > 180) window.targetLongitude -= 360;
+        if (window.targetLongitude < -180) window.targetLongitude += 360;
+    };
+
+        
+
+    // Load drone model
+async function loadDroneModel() {
+    try {
+        // Remove any existing drone entity
+        if (droneEntity) {
+            viewer.entities.remove(droneEntity);
+        }
+
+        // Load the drone model from Cesium ion
+        droneEntity = viewer.entities.add({
+            name: 'Drone',
+            position: Cesium.Cartesian3.fromDegrees(initialLongitude, initialLatitude, initialHeight),
+            model: {
+                uri: await Cesium.IonResource.fromAssetId(3500479), // Replace with your actual Cesium ion Asset ID
+                minimumPixelSize: 64,
+                maximumScale: 20000,
+                silhouetteColor: Cesium.Color.RED,
+                silhouetteSize: 1,
+                color: Cesium.Color.WHITE.withAlpha(0.7),
+                colorBlendMode: Cesium.ColorBlendMode.HIGHLIGHT
+            },
+            orientation: new Cesium.Quaternion.fromHeadingPitchRoll(
+                new Cesium.HeadingPitchRoll(0, 0, 0)
+            )
+        });
+
+        // Fly to the drone position
+        viewer.camera.flyTo({
+            destination: Cesium.Cartesian3.fromDegrees(initialLongitude, initialLatitude, 500), // Adjusted height for better view
+            orientation: {
+                heading: Cesium.Math.toRadians(0),
+                pitch: Cesium.Math.toRadians(-30), // Slightly lower angle for better visibility
+                roll: 0.0
+            }
+        });
+
+        addCommandMessage("Drone model loaded successfully from Cesium ion", "system");
+    } catch (error) {
+        console.error("Error loading drone model from Cesium ion:", error);
+        // Fallback to a simple point if model fails
+        droneEntity = viewer.entities.add({
+            name: 'Drone (Fallback)',
+            position: Cesium.Cartesian3.fromDegrees(initialLongitude, initialLatitude, initialHeight),
+            point: {
+                pixelSize: 10,
+                color: Cesium.Color.RED,
+                outlineColor: Cesium.Color.WHITE,
+                outlineWidth: 2
+            }
+        });
+        addCommandMessage("Failed to load 3D model. Using simple representation.", "error");
+    }
+}
+          
+
+    // Initialize slider controls
+    function initSliderControls() {
+        const thrustPower = document.getElementById('thrustPower');
+        const rotorSpeed = document.getElementById('rotorSpeed');
+        const windResistance = document.getElementById('windResistance');
+        const gravityFactor = document.getElementById('gravityFactor');
+        
+        thrustPower.addEventListener('input', () => {
+            dronePhysics.thrustPower = thrustPower.value / 100;
+            document.getElementById('thrustValue').textContent = `${thrustPower.value}%`;
+        });
+        
+        rotorSpeed.addEventListener('input', () => {
+            dronePhysics.rotorSpeed = rotorSpeed.value;
+            document.getElementById('rotorValue').textContent = `${rotorSpeed.value} RPM`;
+        });
+        
+        windResistance.addEventListener('input', () => {
+            dronePhysics.windResistance = windResistance.value / 100;
+            document.getElementById('windValue').textContent = `${windResistance.value}%`;
+        });
+        
+        gravityFactor.addEventListener('input', () => {
+            dronePhysics.gravityFactor = gravityFactor.value / 100;
+            document.getElementById('gravityValue').textContent = `${gravityFactor.value}%`;
+        });
+    }
+
+    // Initialize motor control button
+    function initMotorControl() {
+        const motorButton = document.getElementById('motorButton');
+        motorButton.addEventListener('click', () => {
+            if (dronePhysics.motorRunning) {
+                dronePhysics.stopMotor();
+            } else {
+                dronePhysics.startMotor();
+            }
+        });
+    }
+
+    // Animation loop
+    viewer.clock.onTick.addEventListener(() => {
+        if (droneEntity) {
+            const lerpFactor = 0.1;
+            window.currentLongitude = Cesium.Math.lerp(window.currentLongitude, window.targetLongitude, lerpFactor);
+            window.currentLatitude = Cesium.Math.lerp(window.currentLatitude, window.targetLatitude, lerpFactor);
+            
+            const currentCartesian = Cesium.Cartesian3.fromDegrees(
+                window.currentLongitude, 
+                window.currentLatitude, 
+                window.currentHeight
+            );
+            
+            droneEntity.position = currentCartesian;
+
+           updateDroneViewIndicator();
+        }
+        
+        dronePhysics.updatePhysics();
+    });
+
+    // Model viewer functionality
+    let currentModelSketch = 0;
+    const totalModelsSketch = 2; // Reduced to 2 models for simplicity
+
+    window.changeModelSketch = function(direction) {
+        document.getElementById("model" + currentModelSketch).classList.remove("active");
+        currentModelSketch += direction;
+        if (currentModelSketch < 0) currentModelSketch = 0;
+        if (currentModelSketch >= totalModelsSketch) currentModelSketch = totalModelsSketch - 1;
+        document.getElementById("model" + currentModelSketch).classList.add("active");
+        document.getElementById("prevBtnSketch").disabled = (currentModelSketch === 0);
+        document.getElementById("nextBtnSketch").disabled = (currentModelSketch === totalModelsSketch - 1);
+    };
+
+    // Command execution function
+    function executeDroneCommand(action) {
+        const commands = {
+            forward: { 
+                axis: 'latitude', 
+                value: window.droneControls.moveStep, 
+                message: 'Moving forward' 
+            },
+            backward: { 
+                axis: 'latitude', 
+                value: -window.droneControls.moveStep, 
+                message: 'Moving backward' 
+            },
+            left: { 
+                axis: 'longitude', 
+                value: -window.droneControls.moveStep, 
+                message: 'Moving left' 
+            },
+            right: { 
+                axis: 'longitude', 
+                value: window.droneControls.moveStep, 
+                message: 'Moving right' 
+            },
+            up: { 
+                axis: 'height', 
+                value: window.droneControls.heightStep, 
+                message: 'Moving up',
+                minHeight: 10
+            },
+            down: { 
+                axis: 'height', 
+                value: -window.droneControls.heightStep, 
+                message: 'Moving down',
+                minHeight: 10
+            },
+            hover: {
+                message: 'Entering hover mode',
+                execute: () => dronePhysics.hover()
+            },
+            emergency: {
+                message: 'Emergency stop activated!',
+                execute: () => dronePhysics.emergency()
+            },
+            home: {
+                message: 'Returning to home position',
+                execute: () => dronePhysics.returnHome()
+            }
+        };
+
+        if (commands[action]) {
+            const cmd = commands[action];
+            let positionUpdated = false;
+            
+            if (cmd.execute) {
+                cmd.execute();
+                positionUpdated = true;
+            } else {
+                switch(cmd.axis) {
+                    case 'latitude':
+                        window.targetLatitude += cmd.value;
+                        positionUpdated = true;
+                        break;
+                    case 'longitude':
+                        window.targetLongitude += cmd.value;
+                        positionUpdated = true;
+                        break;
+                    case 'height':
+                        const newHeight = window.currentHeight + cmd.value;
+                        window.currentHeight = Math.max(cmd.minHeight || 0, newHeight);
+                        positionUpdated = true;
+                        break;
+                }
+            }
+            
+            if (positionUpdated) {
+                window.updateTargetPosition();
+                addCommandMessage(cmd.message, 'system');
+                addCommandMessage(`Executed: ${action}`, 'command');
+                
+                if (window.droneControls.positionHistory.length >= window.droneControls.maxHistory) {
+                    window.droneControls.positionHistory.shift();
+                }
+                window.droneControls.positionHistory.push({
+                    longitude: window.currentLongitude,
+                    latitude: window.currentLatitude,
+                    height: window.currentHeight,
+                    action: action
+                });
+            }
+        } else {
+            addCommandMessage(`Invalid command: ${action}`, 'error');
+        }
+    }
+
+    // Enhanced command processing with more natural language support
+    function processCommand(command) {
+        command = command.toLowerCase().trim();
+        let action = '';
+        
+        const commandMap = {
+            'forward|ahead|move forward|go forward': 'forward',
+            'backward|back|move back|go back': 'backward',
+            'left|move left|go left|turn left': 'left',
+            'right|move right|go right|turn right': 'right',
+            'up|move up|go up|ascend|climb': 'up',
+            'down|move down|go down|descend|land': 'down',
+            'hover|pause|stop moving': 'hover',
+            'emergency|stop|halt|abort': 'emergency',
+            'home|return home|go home': 'home',
+            'go to|location|fly to|navigate to': 'location'
+        };
+
+        for (const [patterns, cmd] of Object.entries(commandMap)) {
+            if (new RegExp(patterns).test(command)) {
+                action = cmd;
+                break;
+            }
+        }
+
+        if (!action) {
+            addCommandMessage("Command not recognized. Try: forward, backward, left, right, up, down, hover, emergency, home, or 'go to location'", 'error');
+            return;
+        }
+        
+        if (action === 'location') {
+            document.getElementById('actionButton')?.click();
+            addCommandMessage("Opening location selector...", 'system');
+        } else {
+            executeDroneCommand(action);
+        }
+    }
+
+    // Improved message display with better styling and types
+    function addCommandMessage(content, type = 'system') {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `message ${type}`;
+        
+        const typeIndicator = type === 'command' ? 'CMD>' : 
+                            type === 'error' ? 'ERR>' : 
+                            type === 'system' ? 'SYS>' : 'USR>';
+        
+        messageDiv.innerHTML = `
+            <div class="message-header">${typeIndicator}</div>
+            <div class="message-content">${content}</div>
+        `;
+
+        const messagesContainer = document.getElementById('command-messages');
+        messagesContainer.appendChild(messageDiv);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    // Initialize control button handlers
+    function initControlButtons() {
+        document.querySelectorAll('.control-btn').forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                const action = button.dataset.action;
+                if (action) {
+                    executeDroneCommand(action);
+                }
+            });
+        });
+
+        // Text command handler with debounce
+        let commandTimeout;
+        document.getElementById('send-command-btn').addEventListener('click', () => {
+            clearTimeout(commandTimeout);
+            commandTimeout = setTimeout(() => {
+                const command = document.getElementById('command-input').value.trim();
+                if (!command) {
+                    addCommandMessage("Please enter a command first", 'error');
+                    return;
+                }
+                processCommand(command);
+                document.getElementById('command-input').value = '';
+            }, 200);
+        });
+
+        // Enhanced Enter key handling
+        document.getElementById('command-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                document.getElementById('send-command-btn').click();
+            }
+        });
+    }
+
+    // Location button handler
+    document.getElementById('actionButton').addEventListener('click', () => {
+        const location = prompt("Enter coordinates (latitude, longitude) or address:");
+        if (location) {
+            const coords = location.split(',').map(coord => parseFloat(coord.trim()));
+            if (coords.length === 2 && !isNaN(coords[0]) && !isNaN(coords[1])) {
+                window.targetLatitude = coords[0];
+                window.targetLongitude = coords[1];
+                window.updateTargetPosition();
+                addCommandMessage(`Navigating to ${coords[0]}, ${coords[1]}`, 'system');
+            } else {
+                addCommandMessage("Could not parse location. Please enter as 'latitude, longitude'", 'error');
+            }
+        }
+    });
+
+    // Initialize when ready
+    document.addEventListener('DOMContentLoaded', () => {
+        loadDroneModel();
+        initControlButtons();
+        initSliderControls();
+        initMotorControl();
+        addCommandMessage("Drone control system initialized", 'system');
+    });
+
+    // Search functionality
+    const searchInput = document.getElementById('product-search-input');
+    const searchBtn = document.getElementById('product-search-btn');
+    const clearBtn = document.getElementById('clear-search-btn');
+    const suggestionsContainer = document.getElementById('search-suggestions');
+
+    // Hide clear button initially
+    clearBtn.style.visibility = 'hidden';
+
+    // Debounce function to limit API calls
+    function debounce(func, delay) {
+        let timeoutId;
+        return function(...args) {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
+    // Search input handler with debounce
+    searchInput.addEventListener('input', debounce(() => {
+        const query = searchInput.value.trim();
+        clearBtn.style.visibility = query.length > 0 ? 'visible' : 'hidden';
+        
+        if (query.length > 0) {
+            showSuggestions(query);
+        } else {
+            suggestionsContainer.style.display = 'none';
+        }
+    }, 300));
+
+    // Clear search handler
+    clearBtn.addEventListener('click', () => {
+        searchInput.value = '';
+        clearBtn.style.visibility = 'hidden';
+        suggestionsContainer.style.display = 'none';
+        searchInput.focus();
+    });
+
+    // Search button and Enter key handler
+    searchBtn.addEventListener('click', performSearch);
+    searchInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            performSearch();
+        }
+    });
+
+    // Perform search function
+    async function performSearch() {
+        const query = searchInput.value.trim();
+        if (!query) return;
+
+        try {
+            // Simulate API call
+            const mockProducts = [
+                { id: 1, Title: "Microwave Oven", 'Sub Category': "Kitchen Appliances" },
+                { id: 2, Title: "Retro Oven", 'Sub Category': "Vintage Appliances" }
+            ];
+            
+            displayResults(mockProducts, true);
+        } catch (error) {
+            showError('Error performing search');
+            console.error('Search error:', error);
+        }
+    }
+
+    // Show suggestions function
+    async function showSuggestions(query) {
+        if (!query) {
+            suggestionsContainer.style.display = 'none';
+            return;
+        }
+
+        try {
+            // Simulate API call
+            const mockSuggestions = [
+                { id: 1, Title: "Microwave Oven", 'Sub Category': "Kitchen Appliances" },
+                { id: 2, Title: "Retro Oven", 'Sub Category': "Vintage Appliances" }
+            ];
+            
+            displayResults(mockSuggestions, false);
+        } catch (error) {
+            showError('Error fetching suggestions');
+            console.error('Suggestion error:', error);
+        }
+    }
+
+    // Display results function (shared for both search and suggestions)
+    function displayResults(items, isSearch) {
+        if (!items || items.length === 0) {
+            suggestionsContainer.innerHTML = `
+                <div class="no-results">
+                    ${isSearch ? 'No products found.' : 'No matching products found'}
+                </div>`;
+            suggestionsContainer.style.display = 'block';
+            return;
+        }
+
+        suggestionsContainer.innerHTML = items.map(item => `
+            <div class="suggestion-item" data-id="${item.id}">
+                <strong>${item.Title}</strong>
+                ${item['Sub Category'] ? `<em> - ${item['Sub Category']}</em>` : ''}
+            </div>
+        `).join('');
+
+        suggestionsContainer.style.display = 'block';
+
+        // Add click handlers to suggestion items
+        document.querySelectorAll('.suggestion-item').forEach(item => {
+            item.addEventListener('click', () => {
+                searchInput.value = item.querySelector('strong').textContent;
+                suggestionsContainer.style.display = 'none';
+                if (isSearch) performSearch();
+            });
+        });
+    }
+
+    // Show error message
+    function showError(message) {
+        suggestionsContainer.innerHTML = `
+            <div class="error-message">
+                ${message}
+            </div>`;
+        suggestionsContainer.style.display = 'block';
+    }
+
+    // Close suggestions when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('.search-container')) {
+            suggestionsContainer.style.display = 'none';
+        }
+    });
+    // Add to your existing script
+document.getElementById('ask-btn').addEventListener('click', sendMessage);
+document.getElementById('prompt').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+async function sendMessage() {
+    const promptInput = document.getElementById('prompt');
+    const message = promptInput.value.trim();
+    
+    if (!message) return;
+    
+    // Add user message to chat
+    addChatMessage(message, 'user');
+    promptInput.value = '';
+    
+    try {
+        // Call your API endpoint
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ message: message })
+        });
+        
+        if (!response.ok) {
+            throw new Error('API request failed');
+        }
+        
+        const data = await response.json();
+        addChatMessage(data.reply, 'ai');
+    } catch (error) {
+        console.error('Error calling API:', error);
+        addChatMessage("Sorry, I'm having trouble connecting to the AI service. Please try again later.", 'error');
+    }
+}
+  </script>
+</body>
+</html>
